@@ -8,7 +8,7 @@
 #
 
 ## This module implements a redis client. It allows you to connect to a
-## redis-server instance, send commands and receive replies.
+## redis-server instance, sfend commands and receive replies.
 ##
 ## **Beware**: Most (if not all) functions that return a ``RedisString`` may
 ## return ``redisNil``, and functions which return a ``RedisList``
@@ -208,6 +208,7 @@ proc flushPipeline*(r: Redis, wasMulti = false): RedisList =
   var tot = r.pipeline.expected
 
   for i in 0..tot-1:
+    #echo(i)
     var ret = r.readNext()
     for item in ret:
      if not (item.contains("OK") or item.contains("QUEUED")):
@@ -304,6 +305,30 @@ proc scan*(r: Redis, cursor: var BiggestInt, pattern: string, count: int): Redis
   ## Find all keys matching the given pattern and yield it to client in portions
   ## using cursor as a client query identifier.
   r.sendCommand("SCAN", $cursor, ["MATCH", pattern, "COUNT", $count])
+  let reply = r.readArray()
+  cursor = strutils.parseBiggestInt(reply[0])
+  return reply[1..high(reply)]
+
+proc zscan*(r: Redis, key: string, cursor: var BiggestInt): RedisList =
+  ## Find all keys matching the given pattern and yield it to client in portions
+  ## using default Redis values for MATCH and COUNT parameters
+  r.sendCommand("ZSCAN", key, $cursor)
+  let reply = r.readArray()
+  cursor = strutils.parseBiggestInt(reply[0])
+  return reply[1..high(reply)]
+
+proc zscan*(r: Redis, key: string, cursor: var BiggestInt, pattern: string): RedisList =
+  ## Find all keys matching the given pattern and yield it to client in portions
+  ## using cursor as a client query identifier. Using default Redis value for COUNT argument
+  r.sendCommand("ZSCAN", key, $cursor, ["MATCH", pattern])
+  let reply = r.readArray()
+  cursor = strutils.parseBiggestInt(reply[0])
+  return reply[1..high(reply)]
+
+proc zscan*(r: Redis, key:string, cursor: var BiggestInt, pattern: string, count: int): RedisList =
+  ## Find all keys matching the given pattern and yield it to client in portions
+  ## using cursor as a client query identifier.
+  r.sendCommand("ZSCAN", key, $cursor, ["MATCH", pattern, "COUNT", $count])
   let reply = r.readArray()
   cursor = strutils.parseBiggestInt(reply[0])
   return reply[1..high(reply)]
